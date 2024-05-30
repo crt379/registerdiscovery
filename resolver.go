@@ -14,12 +14,13 @@ var (
 	etcdclient *clientv3.Client
 )
 
-func init() {
-	resolver.Register(&EtcdResolverBuilder{})
-}
-
 func SetEtcdClient(client *clientv3.Client) {
 	etcdclient = client
+}
+
+func RegisterResolver(client *clientv3.Client) {
+	SetEtcdClient(client)
+	resolver.Register(&EtcdResolverBuilder{})
 }
 
 type EtcdResolverBuilder struct{}
