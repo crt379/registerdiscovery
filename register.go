@@ -9,11 +9,11 @@ import (
 )
 
 func ServiceName2Key(name string) string {
-	return fmt.Sprintf("/%s", name)
+	return fmt.Sprintf("%s/", name)
 }
 
 func nameaddr2key(name, addr string) string {
-	return fmt.Sprintf("%s/%s", ServiceName2Key(name), addr)
+	return fmt.Sprintf("%s%s", ServiceName2Key(name), addr)
 }
 
 // ctx 可控制租约
