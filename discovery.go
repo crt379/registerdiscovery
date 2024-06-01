@@ -77,15 +77,14 @@ func (sd *ServiceDiscovery) DiscoverServices(servicename string) ([]string, erro
 	return addrs, nil
 }
 
-func (sd *ServiceDiscovery) WatchServices(servicename string) <-chan struct{} {
+func (sd *ServiceDiscovery) WatchServices(ctx context.Context, servicename string) <-chan struct{} {
 	ch := make(chan struct{}, 100)
-
-	go sd.watchService(servicename, ch)
+	go sd.watchService(ctx, servicename, ch)
 
 	return ch
 }
 
-func (sd *ServiceDiscovery) watchService(servicename string, notify chan<- struct{}) {
+func (sd *ServiceDiscovery) watchService(ctx context.Context, servicename string, notify chan<- struct{}) {
 	logger := zap.L()
 
 	sd.lock.Lock()
@@ -101,7 +100,7 @@ func (sd *ServiceDiscovery) watchService(servicename string, notify chan<- struc
 		}
 	}
 
-	watchchen := sd.client.Watch(context.Background(), ServiceName2Key(servicename), clientv3.WithPrefix())
+	watchchen := sd.client.Watch(ctx, ServiceName2Key(servicename), clientv3.WithPrefix())
 	for watchresp := range watchchen {
 		if len(watchresp.Events) == 0 {
 			continue
@@ -123,6 +122,13 @@ func (sd *ServiceDiscovery) watchService(servicename string, notify chan<- struc
 		}
 		sd.lock.Unlock()
 	}
+
+	sd.lock.Lock()
+	delete(sd.watchtime, servicename)
+	sd.lock.Unlock()
+	close(notify)
+
+	logger.Debug("stop watch")
 }
 
 func (sd *ServiceDiscovery) watchPut(event *clientv3.Event, servicename string) {

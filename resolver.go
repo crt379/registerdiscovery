@@ -1,6 +1,8 @@
 package registerdiscovery
 
 import (
+	"context"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/resolver"
@@ -29,6 +31,7 @@ func (*EtcdResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn
 	r := &svcResolver{
 		target: target,
 		cc:     cc,
+		ctx:    context.Background(),
 	}
 	r.start()
 
@@ -42,6 +45,7 @@ func (*EtcdResolverBuilder) Scheme() string {
 type svcResolver struct {
 	target resolver.Target
 	cc     resolver.ClientConn
+	ctx    context.Context
 }
 
 func (r *svcResolver) start() {
@@ -55,7 +59,7 @@ func (r *svcResolver) start() {
 	}
 
 	go func() {
-		ch := sd.WatchServices(svc)
+		ch := sd.WatchServices(r.ctx, svc)
 		for range ch {
 			_addrStrs, _err := sd.DiscoverServices(svc)
 			if _err != nil {
@@ -78,4 +82,7 @@ func (r *svcResolver) start() {
 
 func (*svcResolver) ResolveNow(o resolver.ResolveNowOptions) {}
 
-func (*svcResolver) Close() {}
+func (r *svcResolver) Close() {
+	_, cancel := context.WithCancel(r.ctx)
+	cancel()
+}
